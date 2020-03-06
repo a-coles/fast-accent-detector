@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Project-specific
+# datasets/librispeech/
+# datsets/librispeech_preprocessed/
+# datasets/librit/
+# datasets/librit_preprocessed/
+datasets/

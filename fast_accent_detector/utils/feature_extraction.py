@@ -13,13 +13,16 @@ from python_speech_features import mfcc
 
 def extract_mfccs(input_dir, output_dir):
     # Extract mfccs for all wav files
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
     for i, filename in enumerate(os.listdir(input_dir)):
         if filename.endswith('.wav'):
             input_file_path = os.path.join(input_dir, filename)
             (rate, sig) = wav.read(input_file_path)
             mfcc_feat = mfcc(sig, rate, nfft=551)
-            print("Saving MFCC text for {}\n".format(filename))
-            np.savetxt(os.path.join(output_dir, '{}.txt'.format(os.path.splitext(filename)[0])), mfcc_feat, delimiter=",")
+            print("Saving MFCCs for {}".format(filename))
+            np.save(os.path.join(output_dir, '{}.txt'.format(os.path.splitext(filename)[0])), mfcc_feat)
+            # np.savetxt(os.path.join(output_dir, '{}.txt'.format(os.path.splitext(filename)[0])), mfcc_feat, delimiter=",")
 
 
 if __name__ == '__main__':
