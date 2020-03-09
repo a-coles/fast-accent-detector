@@ -3,9 +3,12 @@ Training routines
 '''
 
 import argparse
+import json
 import os
 import torch
+import torch.nn as nn
 
+from networks.baseline import LSTM
 from torch.utils.data import DataLoader
 from utils.dataset import AccentDataset, train_test_split
 
@@ -17,13 +20,23 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
 
+    # Load config
+    with open(os.path.join('config', 'baseline.json'), 'r') as fp:
+        cfg = json.load(fp)
+
     # Create training and valid datasets
     us_dir, uk_dir = os.path.abspath('../datasets/librispeech_mfcc_np'), os.path.abspath('../datasets/librit_mfcc_np')
     dataset = AccentDataset(us_dir, uk_dir)
     train_dataset, valid_dataset, _ = train_test_split(dataset)
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, drop_last=True)
+    train_loader = DataLoader(train_dataset, batch_size=cfg['train_bsz'], shuffle=True, drop_last=True)
+    valid_loader = DataLoader(valid_dataset, batch_size=cfg['train_bsz'], shuffle=True, drop_last=True)
 
-    for i, (x, y) in enumerate(train_loader):
-        print(x)
-        print(y)
-        break
+    # Training loop
+    criterion = nn.CrossEntropyLoss()
+    model = LSTM(cfg, device, name='baseline')
+    model.train(train_loader, valid_loader,
+                loss_fn=criterion,
+                lr=cfg['lr'], train_bsz=cfg['train_bsz'], valid_bsz=cfg['train_bsz'], num_epochs=cfg['num_epochs'])
+    model.log_learning_curves(os.path.join('..', 'results'))
+    model.log_metrics(os.path.join('..', 'results'))
+    model.save_model(os.path.join('..', 'models', 'baseline.pt'))

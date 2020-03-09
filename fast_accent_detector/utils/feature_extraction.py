@@ -22,7 +22,6 @@ def extract_mfccs(input_dir, output_dir):
             mfcc_feat = mfcc(sig, rate, nfft=551)
             print("Saving MFCCs for {}".format(filename))
             np.save(os.path.join(output_dir, '{}.txt'.format(os.path.splitext(filename)[0])), mfcc_feat)
-            # np.savetxt(os.path.join(output_dir, '{}.txt'.format(os.path.splitext(filename)[0])), mfcc_feat, delimiter=",")
 
 
 if __name__ == '__main__':

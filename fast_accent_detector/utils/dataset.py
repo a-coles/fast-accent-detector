@@ -15,9 +15,9 @@ class AccentDataset(Dataset):
     def __init__(self, us_dir, uk_dir, transform=None):
         random.seed(0)
         us_files = [os.path.join(us_dir, f) for f in os.listdir(us_dir) if f.endswith('.npy')]
-        us_examples = [(x, 0) for x in us_files]
+        us_examples = [(x, np.array([1, 0])) for x in us_files]
         uk_files = [os.path.join(uk_dir, f) for f in os.listdir(uk_dir) if f.endswith('.npy')]
-        uk_examples = [(x, 1) for x in uk_files]
+        uk_examples = [(x, np.array([0, 1])) for x in uk_files]
         self.examples = us_examples + uk_examples
         random.shuffle(self.examples)
 
