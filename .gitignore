@@ -129,11 +129,10 @@ dmypy.json
 .pyre/
 
 # Project-specific
-# datasets/librispeech/
-# datsets/librispeech_preprocessed/
-# datasets/librit/
-# datasets/librit_preprocessed/
-datasets/
+datasets/librispeech/
+datasets/librispeech_preprocessed/
+datasets/librit/
+datasets/librit_preprocessed/
 *.csv
 *.png
 *.pt
