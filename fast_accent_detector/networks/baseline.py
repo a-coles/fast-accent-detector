@@ -17,7 +17,7 @@ class LSTM():
         self.name = name
         self.cfg = cfg
         self.train_bsz = cfg['train_bsz']
-        self.model = LSTMModel(input_dim=13, hidden_dim=cfg['hidden_dim'], num_classes=2)
+        self.model = LSTMModel(input_dim=13, hidden_dim=cfg['hidden_dim'], num_classes=2, device=device)
 
         self.train_losses, self.valid_losses, self.test_losses = [], [], []
         self.train_f1, self.valid_f1, self.test_f1 = [], [], []
@@ -125,8 +125,9 @@ class LSTM():
 
 
 class LSTMModel(nn.Module):
-    def __init__(self, input_dim, hidden_dim, num_classes, num_layers=1):
+    def __init__(self, input_dim, hidden_dim, num_classes, num_layers=1, device='cpu'):
         super(LSTMModel, self).__init__()
+        self.device = device
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.num_classes = num_classes
@@ -137,8 +138,8 @@ class LSTMModel(nn.Module):
     def init_hidden(self, bsz):
         # return torch.zeros(self.num_layers, bsz, self.hidden_dim)
         # Initialize hidden state and cell state with zeros
-        h0 = torch.zeros(self.num_layers, bsz, self.hidden_dim)
-        c0 = torch.zeros(self.num_layers, bsz, self.hidden_dim)
+        h0 = torch.zeros(self.num_layers, bsz, self.hidden_dim).to(self.device)
+        c0 = torch.zeros(self.num_layers, bsz, self.hidden_dim).to(self.device)
         return (h0, c0)
 
     def forward(self, x, hidden):
