@@ -39,4 +39,4 @@ if __name__ == '__main__':
                 lr=cfg['lr'], train_bsz=cfg['train_bsz'], valid_bsz=cfg['train_bsz'], num_epochs=cfg['num_epochs'])
     model.log_learning_curves(os.path.join('..', 'results'))
     model.log_metrics(os.path.join('..', 'results'))
-    model.save_model(os.path.join('..', 'models', 'baseline.pt'))
+    # model.save_model(os.path.join('..', 'models', 'baseline.pt'))

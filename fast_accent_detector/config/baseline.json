@@ -2,6 +2,6 @@
 	"train_bsz": 50,
 	"hidden_dim": 350,
 	"num_layers": 1,
-	"num_epochs": 10,
+	"num_epochs": 20,
 	"lr": 0.001
 }

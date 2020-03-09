@@ -17,10 +17,11 @@ class LSTM():
         self.name = name
         self.cfg = cfg
         self.train_bsz = cfg['train_bsz']
-        self.model = LSTMModel(input_dim=13, hidden_dim=cfg['hidden_dim'], num_classes=2, device=device)
+        self.model = LSTMModel(input_dim=13, hidden_dim=cfg['hidden_dim'], num_classes=2, device=device).to(self.device)
 
         self.train_losses, self.valid_losses, self.test_losses = [], [], []
         self.train_f1, self.valid_f1, self.test_f1 = [], [], []
+        self.patience = 3
 
     def load_model(self, model_path):
         self.model.load_state_dict(torch.load(model_path))
@@ -64,20 +65,17 @@ class LSTM():
             plt.savefig(os.path.join(log_dir, '{0}_metrics.png'.format(self.name)))
             plt.clf()
 
-    def f1_score(self, y_true, y_pred, eps=1e-9, beta=1, threshold=2):
+    def f1_score(self, y_true, y_pred, eps=1e-9):
         y_pred = y_pred.float()
         y_true = y_true.float()
-
-        true_positive = (y_pred * y_true).sum(dim=1)
-        precision = true_positive.div(y_pred.sum(dim=1).add(eps))
-        recall = true_positive.div(y_true.sum(dim=1).add(eps))
-
-        return torch.mean(
-            (precision * recall).
-            div(precision + recall + eps).
-            mul(2)).item()
+        true_pos = (y_pred * y_true).sum(dim=1)
+        precision = true_pos.div(y_pred.sum(dim=1).add(eps))  # Epsilon for stability
+        recall = true_pos.div(y_true.sum(dim=1).add(eps))
+        f1 = torch.mean((precision * recall).div(precision + recall + eps).mul(2)).item()
+        return f1
 
     def train(self, train_loader, valid_loader, loss_fn=None, lr=1e-2, train_bsz=1, valid_bsz=1, num_epochs=1):
+        max_valid_f1 = 0.0
         opt = torch.optim.Adam(self.model.parameters(), lr=lr)
         for epoch in range(num_epochs):
             print('EPOCH {} of {}'.format(epoch, num_epochs))
@@ -85,6 +83,22 @@ class LSTM():
             print('train_loss', train_loss, '\t train_f1', train_f1)
             valid_loss, valid_f1 = self.valid_epoch(valid_loader, loss_fn=loss_fn)
             print('valid_loss', valid_loss, '\t valid_f1', valid_f1)
+
+            # Early stop
+            last_val_losses = self.valid_losses[-self.patience:]
+            if epoch > self.patience:
+                stop = True
+                for l in last_val_losses:
+                    if valid_loss < l:
+                        stop = False
+                        break
+                if stop:
+                    print('Early stopping: validation loss has not improved in {0} epochs.'.format(self.patience))
+                    break
+            if valid_f1 > max_valid_f1:
+                max_valid_f1 = valid_f1
+                self.save_model(os.path.join('..', 'models', '{0}.pt'.format(self.name)))
+
             self.train_losses.append(train_loss)
             self.train_f1.append(train_f1)
             self.valid_losses.append(valid_loss)
@@ -94,8 +108,6 @@ class LSTM():
         self.model.train()
         loss_epoch, f1_epoch = 0.0, 0.0
         for i, (x, y) in enumerate(train_loader):
-            if i > 4:  # DEBUG
-                break
             opt.zero_grad()
             x, y = x.to(self.device).float(), y.to(self.device).long()
             hidden = self.model.init_hidden(self.train_bsz)
@@ -106,14 +118,12 @@ class LSTM():
             loss_epoch += loss.item()
             pred = torch.argmax(out, axis=1)
             f1_epoch += self.f1_score(y, pred)
-        return loss_epoch / self.train_bsz, f1_epoch / self.train_bsz
+        return loss_epoch / len(train_loader), f1_epoch / len(train_loader)
 
     def valid_epoch(self, valid_loader, loss_fn=None):
         self.model.eval()
         loss_epoch, f1_epoch = 0.0, 0.0
         for i, (x, y) in enumerate(valid_loader):
-            if i > 4:  # DEBUG
-                break
             x, y = x.to(self.device).float(), y.to(self.device).long()
             hidden = self.model.init_hidden(self.train_bsz)
             out = self.model(x, hidden)
@@ -121,7 +131,7 @@ class LSTM():
             loss_epoch += loss.item()
             pred = torch.argmax(out, axis=1)
             f1_epoch += self.f1_score(y, pred)
-        return loss_epoch / self.train_bsz, f1_epoch / self.train_bsz
+        return loss_epoch / len(valid_loader), f1_epoch / len(valid_loader)
 
 
 class LSTMModel(nn.Module):
@@ -136,16 +146,12 @@ class LSTMModel(nn.Module):
         self.fc = nn.Linear(hidden_dim, num_classes)
 
     def init_hidden(self, bsz):
-        # return torch.zeros(self.num_layers, bsz, self.hidden_dim)
         # Initialize hidden state and cell state with zeros
-        h0 = torch.zeros(self.num_layers, bsz, self.hidden_dim).to(self.device)
-        c0 = torch.zeros(self.num_layers, bsz, self.hidden_dim).to(self.device)
+        h0 = torch.zeros(self.num_layers, bsz, self.hidden_dim).to('cuda')
+        c0 = torch.zeros(self.num_layers, bsz, self.hidden_dim).to('cuda')
         return (h0, c0)
 
     def forward(self, x, hidden):
-        # print(x.size())
-        # print(hidden.size())
         out, hidden = self.lstm(x, hidden)
-        # out = out.contiguous().view(-1, self.hidden_dim)  # Stack
         out = self.fc(out)
         return out
