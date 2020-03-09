@@ -125,7 +125,7 @@ class LSTM():
 
 
 class LSTMModel(nn.Module):
-    def __init__(self, input_dim, hidden_dim, num_classes, num_layers=1, device='cpu'):
+    def __init__(self, input_dim, hidden_dim, num_classes, num_layers=1, device='cuda'):
         super(LSTMModel, self).__init__()
         self.device = device
         self.input_dim = input_dim
