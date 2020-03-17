@@ -1,12 +1,11 @@
 '''
-Training routines
+Testing routines
 '''
 
 import argparse
 import json
 import os
 import torch
-import torch.nn as nn
 
 from networks.baseline import LSTM
 from torch.utils.data import DataLoader
@@ -18,20 +17,22 @@ if __name__ == '__main__':
     print('Using device:', device)
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('model', type=str, help='Path to model to test.')
+    parser.add_argument('cfg', type=str, help='Path to config file.')
+    parser.add_argument('--name', type=str, help='Name for model to test.')
     args = parser.parse_args()
 
     # Load config
-    with open(os.path.join('config', 'baseline2.json'), 'r') as fp:
+    with open(args.cfg, 'r') as fp:
         cfg = json.load(fp)
 
-    # Create training and valid datasets
+    # Create test datasets
     us_dir, uk_dir = os.path.abspath('../datasets/librispeech_mfcc_np'), os.path.abspath('../datasets/librit_mfcc_np')
     dataset = AccentDataset(us_dir, uk_dir)
-    train_dataset, valid_dataset, _ = train_test_split(dataset)
-    train_loader = DataLoader(train_dataset, batch_size=cfg['train_bsz'], shuffle=True, drop_last=True)
-    valid_loader = DataLoader(valid_dataset, batch_size=cfg['train_bsz'], shuffle=True, drop_last=True)
+    _, _, test_dataset = train_test_split(dataset)
+    test_loader = DataLoader(test_dataset, batch_size=cfg['test_bsz'], shuffle=True, drop_last=True)
 
-    # Training loop
-    criterion = nn.CrossEntropyLoss()
-    model = LSTM(cfg, device, name='baseline')
-    model.train(train_loader, valid_loader, best_metric='f1', patience=10)
+    # Load and test model
+    model = LSTM(cfg, device, name=args.name)
+    model.load_model(args.model)
+    model.test(test_loader)
