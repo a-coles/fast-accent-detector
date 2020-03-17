@@ -36,6 +36,7 @@ if __name__ == '__main__':
     model = RL(cfg, device, name='reinforce')
     model.train(train_loader, valid_loader,
                 lr=cfg['lr'], train_bsz=cfg['train_bsz'], valid_bsz=cfg['train_bsz'], num_epochs=cfg['num_epochs'])
-    model.log_learning_curves(os.path.join('..', 'results'))
-    model.log_metrics(os.path.join('..', 'results'))
+    # model.log_learning_curves(os.path.join('..', 'results'))
+    # model.log_f1(os.path.join('..', 'results'))
+    # model.log_f1(os.path.join('..', 'results'))
     # model.save_model(os.path.join('..', 'models', 'baseline.pt'))

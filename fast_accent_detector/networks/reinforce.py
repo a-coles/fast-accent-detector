@@ -8,133 +8,25 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .net import Net
+
 import matplotlib
 matplotlib.use('Agg')  # noqa
 import matplotlib.pyplot as plt
 
 
-class RL():
+class RL(Net):
     def __init__(self, cfg, device, name=None):
-        self.device = device
-        self.name = name
-        self.cfg = cfg
-        self.train_bsz = cfg['train_bsz']
+        super().__init__(cfg, device, name=name)
         self.gamma = 0.99
-        self.model = RLModel(input_dim=13, hidden_dim=cfg['hidden_dim'], num_layers=1, num_classes=2).to(self.device)
+        self.model = RLModel(input_dim=13,
+                             hidden_dim=cfg['hidden_dim'],
+                             num_layers=1,
+                             num_classes=2).to(self.device)
 
-        self.train_losses, self.valid_losses, self.test_losses = [], [], []
-        self.train_f1, self.valid_f1, self.test_f1 = [], [], []
-        self.patience = 10
-
-    def load_model(self, model_path):
-        self.model.load_state_dict(torch.load(model_path))
-
-    def save_model(self, save_path):
-        torch.save(self.model.state_dict(), save_path)
-
-    def log_learning_curves(self, log_dir, graph=True):
-        # Logs the learning curve info to a csv.
-        header = 'epoch,train_loss,valid_loss'
-        num_epochs = len(self.train_losses)
-        with open(os.path.join(log_dir, '{0}_learning_curves.csv'.format(self.name)), 'w') as fp:
-            fp.write('{0}\n'.format(header))
-            for e in range(num_epochs):
-                fp.write('{0},{1},{2}\n'.format(e, self.train_losses[e], self.valid_losses[e]))
-        if graph:
-            plt.plot(list(range(num_epochs)), self.train_losses, color='blue', label='Train')
-            plt.plot(list(range(num_epochs)), self.valid_losses, color='red', label='Valid')
-            plt.title('Cross-entropy loss over training')
-            plt.xlabel('Epoch')
-            plt.ylabel('Loss')
-            plt.legend()
-            plt.savefig(os.path.join(log_dir, '{0}_learning_curves.png'.format(self.name)))
-            plt.clf()
-
-    def log_metrics(self, log_dir, graph=True):
-        # Logs evaluation metrics (BLEU, etc.) to a csv.
-        header = 'epoch,train_f1,valid_f1'
-        num_epochs = len(self.train_f1)
-        with open(os.path.join(log_dir, '{0}_metrics.csv'.format(self.name)), 'w') as fp:
-            fp.write('{0}\n'.format(header))
-            for e in range(num_epochs):
-                fp.write('{0},{1},{2}\n'.format(e, self.train_f1[e], self.valid_f1[e]))
-        if graph:
-            plt.plot(list(range(num_epochs)), self.train_f1, color='blue', label='Train')
-            plt.plot(list(range(num_epochs)), self.valid_f1, color='red', label='Valid')
-            plt.title('F1 score over training')
-            plt.xlabel('Epoch')
-            plt.ylabel('F1')
-            plt.legend()
-            plt.savefig(os.path.join(log_dir, '{0}_metrics.png'.format(self.name)))
-            plt.clf()
-
-    def f1_score(self, y_true, y_pred, eps=1e-9):
-        y_pred = y_pred.float()
-        y_true = y_true.float()
-        # print('y_pred', y_pred)
-        # print('y_true', y_true)
-        # y_true = 0 if y_true[0] == 1 else 1
-        tp, fp, tn, fn = 0.0, 0.0, 0.0, 0.0
-
-        for (t, p) in zip(y_true, y_pred):
-            p = 1.0 if p[0] == 0.0 else 0.0
-            t = 1.0 if t[0] == 0.0 else 0.0
-            if t == 1.0 and p == 1.0:
-                tp += 1  # True positive
-            elif t == 0.0 and p == 1.0:
-                fp += 1  # False positive
-            elif t == 1.0 and p == 0.0:
-                fn += 1  # False negative
-            elif t == 0.0 and p == 0.0:
-                tn += 1  # True negative
-
-
-        
-        # tp = (y_true * y_pred).sum(dim=0).to(torch.float32)
-        # tn = ((1 - y_true) * (1 - y_pred)).sum(dim=0).to(torch.float32)
-        # fp = ((1 - y_true) * y_pred).sum(dim=0).to(torch.float32)
-        # fn = (y_true * (1 - y_pred)).sum(dim=0).to(torch.float32)
-
-        precision = tp / (tp + fp + eps)
-        recall = tp / (tp + fn + eps)
-
-        f1 = 2* (precision*recall) / (precision + recall + eps)
-        # f1 = f1.clamp(min=eps, max=1-eps)
-        return f1
-
-    def train(self, train_loader, valid_loader, lr=1e-2, train_bsz=1, valid_bsz=1, num_epochs=1):
-        max_valid_f1 = 0.0
-        opt = torch.optim.Adam(self.model.parameters(), lr=lr)
-        bce = nn.BCELoss()
-        for epoch in range(num_epochs):
-            print('EPOCH {} of {}'.format(epoch, num_epochs))
-            train_loss, train_f1, train_t = self.train_epoch(train_loader, opt, bce_loss_fn=bce)
-            print('train_loss', train_loss, '\t train_f1', train_f1, '\t train_t', train_t)
-            valid_loss, valid_f1, valid_t = self.valid_epoch(valid_loader, bce_loss_fn=bce)
-            print('valid_loss', valid_loss, '\t valid_f1', valid_f1, '\t valid_t', valid_t)
-
-            # Early stop
-            last_val_losses = self.valid_losses[-self.patience:]
-            if epoch > self.patience:
-                stop = True
-                for l in last_val_losses:
-                    if valid_loss < l:
-                        stop = False
-                        break
-                if stop:
-                    print('Early stopping: validation loss has not improved in {0} epochs.'.format(self.patience))
-                    break
-            if valid_f1 > max_valid_f1:
-                max_valid_f1 = valid_f1
-                self.save_model(os.path.join('..', 'models', '{0}.pt'.format(self.name)))
-
-            self.train_losses.append(train_loss)
-            self.train_f1.append(train_f1)
-            self.valid_losses.append(valid_loss)
-            self.valid_f1.append(valid_f1)
-
-    def train_epoch(self, train_loader, opt, bce_loss_fn=None):
+    def train_epoch(self, train_loader, opt):
         self.model.train()
+        bce = nn.BCELoss()
         loss_epoch, f1_epoch, num_t_epoch = 0.0, 0.0, 0
         for i, (x, y) in enumerate(train_loader):
             # print('Example {0}'.format(i))
@@ -145,7 +37,7 @@ class RL():
             opt.zero_grad()
             # print('true tag:', y)
             x, y = x.to(self.device).float(), y.to(self.device).float()
-            hidden = self.model.init_hidden(self.train_bsz)
+            hidden = self.model.init_hidden(self.cfg['train_bsz'])
 
             # Pass input through model
             tag_dist, action_probs, baselines, num_t = self.model(x, hidden)
@@ -159,10 +51,10 @@ class RL():
             # Calculate reward/return (all 0s until last timestep)
             # num_t = len(actions)
             # ret = self.gamma * self.model.ActionSelector.get_reward(tag.detach(), y.detach(), num_t)
-            final_reward = self.model.ActionSelector.get_reward(tag, y, num_t, self.train_bsz).unsqueeze(0)#.permute(1, 0)
+            final_reward = self.model.ActionSelector.get_reward(tag, y, num_t, self.cfg['train_bsz']).unsqueeze(0)#.permute(1, 0)
             # print('final reward', final_reward.size())
             final_reward = final_reward.permute(1, 0)
-            prev_reward = torch.zeros([self.train_bsz, num_t])
+            prev_reward = torch.zeros([self.cfg['train_bsz'], num_t])
             # print('prev  reward', prev_reward)
             # rewards = torch.cat((torch.zeros([self.train_bsz, num_t]), final_reward), dim=1)
             rewards = torch.cat((prev_reward,
@@ -183,7 +75,7 @@ class RL():
             loss_agent = self.agent_loss(action_probs, ret_hat)
             # print('loss agent', loss_agent)
 
-            loss_classifier = bce_loss_fn(tag_dist, y)
+            loss_classifier = bce(tag_dist, y)
             # print('loss classifier', loss_classifier)
             # loss_agent = self.rl_loss()
             loss_baseline = self.baseline_loss(ret_hat, baselines)
@@ -203,8 +95,12 @@ class RL():
         # print('     Epoch on avg {0} timesteps.'.format(num_t_epoch / len(train_loader)))
         # return loss_epoch / len(train_loader), f1_epoch / len(train_loader), num_t_epoch / len(train_loader)
         # return loss_epoch, f1_epoch
-        epoch_stats = np.array([loss_epoch, f1_epoch, num_t_epoch]) / len(train_loader)
-        return epoch_stats
+        # epoch_stats = np.array([loss_epoch, f1_epoch, num_t_epoch]) / len(train_loader)
+        # return epoch_stats
+        metrics = {'loss': loss_epoch / len(train_loader),
+                   'f1': f1_epoch / len(train_loader),
+                   'timesteps': num_t_epoch / len(train_loader)}
+        return metrics
 
     def get_returns(self, rewards):
         returns, R = torch.zeros_like(rewards).to('cuda'), 0
@@ -239,7 +135,7 @@ class RL():
             for i, r in enumerate(b):
                 # for i, r in enumerate(t):
                 loss_sum += r * (-1 * action_probs[i])
-        return loss_sum / self.train_bsz
+        return loss_sum / self.cfg['train_bsz']
 
     def baseline_loss(self, ret_hat, baselines):
         # loss_sum = 0.0
@@ -253,15 +149,13 @@ class RL():
         loss_sum = mse(baselines, ret_hat)
         return loss_sum
 
-    def reinforce(self):
-        pass
-
-    def valid_epoch(self, valid_loader, bce_loss_fn=None):
+    def valid_epoch(self, valid_loader):
         self.model.eval()
+        bce = nn.BCELoss()
         loss_epoch, f1_epoch, num_t_epoch = 0.0, 0.0, 0
         for i, (x, y) in enumerate(valid_loader):
             x, y = x.to(self.device).float(), y.to(self.device).float()
-            hidden = self.model.init_hidden(self.train_bsz)
+            hidden = self.model.init_hidden(self.cfg['train_bsz'])
 
             # Pass input through model
             tag_dist, action_probs, baselines, num_t = self.model(x, hidden)
@@ -275,10 +169,10 @@ class RL():
             # Calculate reward/return (all 0s until last timestep)
             # num_t = len(actions)
             # ret = self.gamma * self.model.ActionSelector.get_reward(tag.detach(), y.detach(), num_t)
-            final_reward = self.model.ActionSelector.get_reward(tag, y, num_t, self.train_bsz).unsqueeze(0)#.permute(1, 0)
+            final_reward = self.model.ActionSelector.get_reward(tag, y, num_t, self.cfg['train_bsz']).unsqueeze(0)#.permute(1, 0)
             # print('final reward', final_reward.size())
             final_reward = final_reward.permute(1, 0)
-            prev_reward = torch.zeros([self.train_bsz, num_t])
+            prev_reward = torch.zeros([self.cfg['train_bsz'], num_t])
             # print('prev  reward', prev_reward)
             # rewards = torch.cat((torch.zeros([self.train_bsz, num_t]), final_reward), dim=1)
             rewards = torch.cat((prev_reward,
@@ -299,7 +193,7 @@ class RL():
             loss_agent = self.agent_loss(action_probs, ret_hat)
             # print('loss agent', loss_agent)
 
-            loss_classifier = bce_loss_fn(tag_dist, y)
+            loss_classifier = bce(tag_dist, y)
             # print('loss classifier', loss_classifier)
             # loss_agent = self.rl_loss()
             loss_baseline = self.baseline_loss(ret_hat, baselines)
@@ -318,8 +212,12 @@ class RL():
             # break
         # print('     Epoch on avg {0} timesteps.'.format(num_t_epoch / len(valid_loader)))
         # return loss_epoch / len(valid_loader), f1_epoch / len(valid_loader)
-        epoch_stats = np.array([loss_epoch, f1_epoch, num_t_epoch]) / len(valid_loader)
-        return epoch_stats
+        # epoch_stats = np.array([loss_epoch, f1_epoch, num_t_epoch]) / len(valid_loader)
+        # return epoch_stats
+        metrics = {'loss': loss_epoch / len(valid_loader),
+                   'f1': f1_epoch / len(valid_loader),
+                   'timesteps': num_t_epoch / len(valid_loader)}
+        return metrics
 
 
 class RLModel(nn.Module):
