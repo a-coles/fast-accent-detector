@@ -18,10 +18,14 @@ if __name__ == '__main__':
     print('Using device:', device)
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('config_file', type=str, help='Training config.')
+    parser.add_argument('--name', type=str, default=None, help='Name for model.')
+    parser.add_argument('--continue_model', type=str, help='Path to model for continuing training.')
     args = parser.parse_args()
 
     # Load config
-    with open(os.path.join('config', 'reinforce.json'), 'r') as fp:
+    # with open(os.path.join('config', 'reinforce.json'), 'r') as fp:
+    with open(args.config_file, 'r') as fp:
         cfg = json.load(fp)
 
     # Create training and valid datasets
@@ -32,10 +36,15 @@ if __name__ == '__main__':
     valid_loader = DataLoader(valid_dataset, batch_size=cfg['train_bsz'], shuffle=True, drop_last=True)
 
     # Training loop
-    criterion = nn.CrossEntropyLoss()
-    model = RL(cfg, device, name='reinforce')
-    model.train(train_loader, valid_loader,
-                lr=cfg['lr'], train_bsz=cfg['train_bsz'], valid_bsz=cfg['train_bsz'], num_epochs=cfg['num_epochs'])
+    # criterion = nn.CrossEntropyLoss()
+    model = RL(cfg, device, name=args.name)
+    if args.continue_model:
+        print('Continuing training from {0}'.format(args.continue_model))
+        model.load_model(args.continue_model)
+    # model.train(train_loader, valid_loader,
+    #             lr=cfg['lr'], train_bsz=cfg['train_bsz'], valid_bsz=cfg['train_bsz'], num_epochs=cfg['num_epochs'])
+    model.train(train_loader, valid_loader, best_metric='f1', patience=100)
+
     # model.log_learning_curves(os.path.join('..', 'results'))
     # model.log_f1(os.path.join('..', 'results'))
     # model.log_f1(os.path.join('..', 'results'))

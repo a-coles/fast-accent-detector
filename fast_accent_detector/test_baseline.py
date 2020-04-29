@@ -27,7 +27,7 @@ if __name__ == '__main__':
         cfg = json.load(fp)
 
     # Create test datasets
-    us_dir, uk_dir = os.path.abspath('../datasets/librispeech_mfcc_np'), os.path.abspath('../datasets/librit_mfcc_np')
+    us_dir, uk_dir = os.path.abspath('../datasets/librispeech_mfcc_norm'), os.path.abspath('../datasets/librit_mfcc_norm')
     dataset = AccentDataset(us_dir, uk_dir)
     _, _, test_dataset = train_test_split(dataset)
     test_loader = DataLoader(test_dataset, batch_size=cfg['test_bsz'], shuffle=True, drop_last=True)

@@ -36,7 +36,7 @@ class LSTM(Net):
                    'f1': f1_epoch / len(train_loader)}
         return metrics
 
-    def valid_epoch(self, valid_loader):
+    def valid_epoch(self, valid_loader, test=False):
         self.model.eval()
         loss_fn = nn.CrossEntropyLoss()
         loss_epoch, f1_epoch = 0.0, 0.0

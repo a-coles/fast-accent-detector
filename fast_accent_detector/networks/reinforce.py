@@ -40,7 +40,7 @@ class RL(Net):
             hidden = self.model.init_hidden(self.cfg['train_bsz'])
 
             # Pass input through model
-            tag_dist, action_probs, baselines, num_t = self.model(x, hidden)
+            tag_dist, action_probs, baselines, num_t = self.model(x, hidden, is_training=True)
             # print('action probs', action_probs)
             # print('tag dist', tag_dist)
             # tag = torch.argmax(tag_dist).unsqueeze(0).int()
@@ -149,7 +149,7 @@ class RL(Net):
         loss_sum = mse(baselines, ret_hat)
         return loss_sum
 
-    def valid_epoch(self, valid_loader):
+    def valid_epoch(self, valid_loader, test=False):
         self.model.eval()
         bce = nn.BCELoss()
         loss_epoch, f1_epoch, num_t_epoch = 0.0, 0.0, 0
@@ -158,7 +158,7 @@ class RL(Net):
             hidden = self.model.init_hidden(self.cfg['train_bsz'])
 
             # Pass input through model
-            tag_dist, action_probs, baselines, num_t = self.model(x, hidden)
+            tag_dist, action_probs, baselines, num_t = self.model(x, hidden, is_training=not test)
             # print('action probs', action_probs)
             # print('tag dist', tag_dist)
             # tag = torch.argmax(tag_dist).unsqueeze(0).int()
@@ -266,7 +266,7 @@ class RLModel(nn.Module):
             # Action 0: terminate; action 1: wait
             # print(torch.mean(hiddens_avg, dim=0).size())
             action_dist = self.ActionSelector(torch.mean(hiddens_avg, dim=0))
-            # print('action dist', action_dist.size())
+            # print('action dist', action_dist)
             # action = np.random.choice(self.actions, p=action_dist)
             m = torch.distributions.Categorical(action_dist)
             if is_training:

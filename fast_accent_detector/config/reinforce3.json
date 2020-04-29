@@ -1,0 +1,8 @@
+{
+	"train_bsz": 16,
+	"test_bsz": 16,
+	"hidden_dim": 256,
+	"num_layers": 1,
+	"num_epochs": 1000,
+	"lr": 0.01
+}
