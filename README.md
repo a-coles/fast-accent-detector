@@ -24,3 +24,12 @@ The requirements file is included in `requirements.txt`. You can create an envir
 conda create --name rl_env --file requirements.txt
 conda activate rl_env
 ```
+
+## Repo structure
+
+This repo includes the following dirs:
+
+* `datasets/` - contains preprocessed, MFCC-featurized US and UK speaker datasets, in normalized and non-normalized versions. *NB: original audio is not included due to excessive size, but can be supplied upon request.*
+* `fast_accent_detector/` - contains the model source code and preprocessing code.
+* `models/` - contains the two final saved PyTorch models (baseline and RL models).
+* `results/` - stores .csv and graph results, if re-training is desired.
