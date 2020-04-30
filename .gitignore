@@ -136,3 +136,4 @@ datasets/librit_preprocessed/
 *.csv
 *.png
 *.pt
+requirements_old.txt
