@@ -135,5 +135,6 @@ datasets/librit/
 datasets/librit_preprocessed/
 *.csv
 *.png
-*.pt
 requirements_old.txt
+models_old/*
+fast_accent_detector/config_old/*

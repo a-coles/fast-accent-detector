@@ -31,5 +31,46 @@ This repo includes the following dirs:
 
 * `datasets/` - contains preprocessed, MFCC-featurized US and UK speaker datasets, in normalized and non-normalized versions. *NB: original audio is not included due to excessive size, but can be supplied upon request.*
 * `fast_accent_detector/` - contains the model source code and preprocessing code.
+	* `config/` - contains .json configurations for model training and testing.
 * `models/` - contains the two final saved PyTorch models (baseline and RL models).
 * `results/` - stores .csv and graph results, if re-training is desired.
+
+
+## Running
+
+### Training
+
+*NB: Re-training is not recommended, since it can take an excessively long time and runs the risk of clobbering existing saved models if you are not careful renaming.*
+
+To train the baseline, run:
+
+```
+cd fast_accent_detector
+python train_baseline.py config/baseline.json --name baseline
+```
+
+To train the RL model, run:
+
+```
+cd fast_accent_detector
+python train_reinforce.py config/reinforce.json --name reinforce
+```
+
+If you would like to further train the model, you can provide the argument `--continue_model ../models/reinforce.pt`. Training results will be dumped to `results/`.
+
+### Testing
+
+To test the baseline, run:
+
+
+```
+cd fast_accent_detector
+python test_baseline.py ../models/baseline.pt config/baseline.json --name baseline
+```
+
+To test the RL model, run:
+
+```
+cd fast_accent_detector
+python test_reinforce.py ../models/reinforce.pt config/reinforce.json --name reinforce
+```
