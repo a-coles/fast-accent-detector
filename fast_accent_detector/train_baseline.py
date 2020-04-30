@@ -1,12 +1,11 @@
 '''
-Training routines
+Training routines for baseline
 '''
 
 import argparse
 import json
 import os
 import torch
-# import torch.nn as nn
 
 from networks.baseline import LSTM
 from torch.utils.data import DataLoader
@@ -18,10 +17,12 @@ if __name__ == '__main__':
     print('Using device:', device)
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('config_file', type=str, help='Training config.')
+    parser.add_argument('--name', type=str, default=None, help='Name for model.')
     args = parser.parse_args()
 
     # Load config
-    with open(os.path.join('config', 'baseline2.json'), 'r') as fp:
+    with open(args.config_file, 'r') as fp:
         cfg = json.load(fp)
 
     # Create training and valid datasets
@@ -32,6 +33,5 @@ if __name__ == '__main__':
     valid_loader = DataLoader(valid_dataset, batch_size=cfg['train_bsz'], shuffle=True, drop_last=True)
 
     # Training loop
-    # criterion = nn.CrossEntropyLoss()
-    model = LSTM(cfg, device, name='baseline64_norm')
+    model = LSTM(cfg, device, name=args.name)
     model.train(train_loader, valid_loader, best_metric='f1', patience=10)

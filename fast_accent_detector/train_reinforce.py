@@ -1,19 +1,18 @@
 '''
-Training routines
+Training routines for RL model
 '''
 
 import argparse
 import json
 import os
 import torch
-import torch.nn as nn
 
 from networks.reinforce import RL
 from torch.utils.data import DataLoader
 from utils.dataset import AccentDataset, train_test_split
 
 if __name__ == '__main__':
-    torch.manual_seed(3)
+    torch.manual_seed(2)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
 
@@ -24,7 +23,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Load config
-    # with open(os.path.join('config', 'reinforce.json'), 'r') as fp:
     with open(args.config_file, 'r') as fp:
         cfg = json.load(fp)
 
@@ -36,16 +34,8 @@ if __name__ == '__main__':
     valid_loader = DataLoader(valid_dataset, batch_size=cfg['train_bsz'], shuffle=True, drop_last=True)
 
     # Training loop
-    # criterion = nn.CrossEntropyLoss()
     model = RL(cfg, device, name=args.name)
     if args.continue_model:
         print('Continuing training from {0}'.format(args.continue_model))
         model.load_model(args.continue_model)
-    # model.train(train_loader, valid_loader,
-    #             lr=cfg['lr'], train_bsz=cfg['train_bsz'], valid_bsz=cfg['train_bsz'], num_epochs=cfg['num_epochs'])
     model.train(train_loader, valid_loader, best_metric='f1', patience=100)
-
-    # model.log_learning_curves(os.path.join('..', 'results'))
-    # model.log_f1(os.path.join('..', 'results'))
-    # model.log_f1(os.path.join('..', 'results'))
-    # model.save_model(os.path.join('..', 'models', 'baseline.pt'))
